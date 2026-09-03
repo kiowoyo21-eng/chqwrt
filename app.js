@@ -350,6 +350,17 @@ function render() {
 
     const text = values[e.name] ?? '';
     if (!text) continue;
+
+    // FastReport rotates text *inside* the memo rectangle. Rotating the whole
+    // CSS rectangle around its top-left corner clips BDO's A/C PAYEE ONLY.
+    // For crossing text, anchor it midway between the two extracted crossing
+    // lines and rotate along their actual slope. This reproduces the printed
+    // FastReport geometry much more closely.
+    if (e.name === 'mmPayeeOnly') {
+      renderCrossingText(template, e, text, dx, dy, guides);
+      continue;
+    }
+
     const node = document.createElement('div');
     node.className = `print-element${guides ? ' guide' : ''}`;
     node.textContent = text;
@@ -389,9 +400,100 @@ function render() {
   scalePreview();
 }
 
+function renderCrossingText(template, e, text, dx, dy, guides) {
+  const line1 = template.elements.find(item => item.name === 'lnPayee1');
+  const line2 = template.elements.find(item => item.name === 'lnPayee2');
+
+  // All Philippine cheque templates in the extracted Chrysanth library use
+  // lnPayee1/lnPayee2 as the crossing strip and mmPayeeOnly as its label.
+  // Render the label in a *rotated local coordinate system* whose X axis
+  // follows the diagonal lines and whose Y axis sits perpendicular to them.
+  // This is important: translating the text in normal page coordinates before
+  // rotation makes it appear above/below the crossing on every bank template.
+  let angle = -Number(e.rotation || 0);
+  let anchorX = Number(e.leftMm || 0);
+  let anchorY = Number(e.topMm || 0) + Number(e.heightMm || 0) / 2;
+  let stripGapMm = 6;
+  let usableWidthMm = Math.max(30, Number(e.widthMm || 0));
+
+  if (line1 && line2) {
+    const vx1 = Number(line1.widthMm || 0);
+    const vy1 = Number(line1.heightMm || 0);
+    const vx2 = Number(line2.widthMm || 0);
+    const vy2 = Number(line2.heightMm || 0);
+
+    const a1 = Math.atan2(vy1, vx1);
+    const a2 = Math.atan2(vy2, vx2);
+    // The extracted lines are parallel, but average their unit vectors so the
+    // routine remains stable if a legacy bank layout differs by a fraction.
+    const ux = Math.cos(a1) + Math.cos(a2);
+    const uy = Math.sin(a1) + Math.sin(a2);
+    const a = (Math.abs(ux) + Math.abs(uy)) > 0.000001 ? Math.atan2(uy, ux) : a1;
+    angle = a * 180 / Math.PI;
+
+    // Use the memo's original X coordinate (from Chrysanth) but place its
+    // baseline exactly on the geometric midline between the two crossing lines.
+    const y1 = lineYAtX(line1, anchorX);
+    const y2 = lineYAtX(line2, anchorX);
+    if (Number.isFinite(y1) && Number.isFinite(y2)) {
+      anchorY = (y1 + y2) / 2;
+      // Convert the vertical distance to true perpendicular strip spacing.
+      stripGapMm = Math.abs(y2 - y1) * Math.abs(Math.cos(a));
+    }
+
+    // Do not let the label run beyond the shared visible diagonal area.
+    const line1Len = Math.hypot(vx1, vy1);
+    const line2Len = Math.hypot(vx2, vy2);
+    usableWidthMm = Math.max(22, Math.min(Number(e.widthMm || 34), Math.min(line1Len, line2Len) - 2));
+  }
+
+  const anchor = document.createElement('div');
+  anchor.className = `crossing-anchor${guides ? ' guide' : ''}`;
+  anchor.style.left = `${anchorX + dx}mm`;
+  anchor.style.top = `${anchorY + dy}mm`;
+  anchor.style.transform = `rotate(${angle}deg)`;
+
+  const node = document.createElement('div');
+  node.className = 'print-element crossing-text';
+  node.style.width = `${usableWidthMm}mm`;
+  node.style.fontFamily = settings.font === 'template' ? (e.fontName || 'Arial') : settings.font;
+  node.style.fontWeight = (e.fontStyle || []).includes('fsBold') ? '700' : '400';
+  node.style.fontStyle = (e.fontStyle || []).includes('fsItalic') ? 'italic' : 'normal';
+  node.style.textDecoration = (e.fontStyle || []).includes('fsUnderline') ? 'underline' : 'none';
+  node.style.transform = 'translateY(-50%)';
+
+  const rows = String(text).split(/\n/).filter(Boolean);
+  const lineCount = Math.max(1, rows.length);
+  const templatePx = Math.abs(Number(e.fontHeightPx || 11));
+  // Keep one/two-line crossing labels physically inside the extracted strip.
+  // 1 mm ≈ 3.78 CSS px at 96 dpi. Leave a little clearance from both lines.
+  const gapLimitedPx = Math.max(7, (stripGapMm * PX_PER_MM * 0.78) / lineCount);
+  const finalPx = Math.min(templatePx, gapLimitedPx);
+  node.style.fontSize = `${finalPx}px`;
+  node.style.lineHeight = lineCount > 1 ? '0.92' : '1';
+
+  rows.forEach(lineText => {
+    const row = document.createElement('span');
+    row.textContent = lineText;
+    node.appendChild(row);
+  });
+
+  anchor.appendChild(node);
+  els.printLayer.appendChild(anchor);
+}
+
+function lineYAtX(line, x) {
+  const left = Number(line.leftMm || 0);
+  const top = Number(line.topMm || 0);
+  const width = Number(line.widthMm || 0);
+  const height = Number(line.heightMm || 0);
+  if (Math.abs(width) < 0.000001) return top;
+  return top + height * ((x - left) / width);
+}
+
 function shouldRenderElement(e, values) {
   if (e.name === 'mmPayeeOnly') return values.__crossLines && values.__acPayee;
-  if (e.name === 'mmNoBearer') return e.visible && values.__noBearer;
+  if (e.name === 'mmNoBearer') return values.__noBearer;
   if (e.name === 'lnPayee1' || e.name === 'lnPayee2') return values.__crossLines;
   if (e.name === 'mmAmountText2') return e.visible && Number(e.widthMm) > 0.1 && Boolean(values.mmAmountText2);
   if (e.name === 'mmMMM') {
@@ -429,7 +531,7 @@ function buildFieldValues(template) {
     __crossLines: crossing !== 'none',
     __acPayee: crossing === 'ac-bearer' || crossing === 'ac-notneg-bearer' || crossing === 'ac-nobearer',
     __notNegotiable: crossing === 'ac-notneg-bearer',
-    __noBearer: crossing === 'ac-nobearer',
+    __noBearer: crossing === 'ac-bearer' || crossing === 'ac-notneg-bearer',
     __dateEnabled: dateEnabled
   };
 

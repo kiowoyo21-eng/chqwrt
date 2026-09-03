@@ -123,3 +123,41 @@ input:focus, select:focus { border-color: #6ea4e5; box-shadow: 0 0 0 3px rgba(20
     overflow: visible !important;
   }
 }
+
+/* FastReport-style cheque crossing.  The anchor is rotated to follow the
+   extracted diagonal lines; the label is then centered in that local strip. */
+.crossing-anchor {
+  position: absolute;
+  width: 0;
+  height: 0;
+  transform-origin: 0 0;
+  overflow: visible;
+  pointer-events: none;
+}
+.crossing-anchor.guide::after {
+  content: "";
+  position: absolute;
+  left: -1mm;
+  top: -1mm;
+  width: 2mm;
+  height: 2mm;
+  border: 1px dotted rgba(37, 99, 235, .35);
+}
+.print-element.crossing-text {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  white-space: nowrap;
+  overflow: visible;
+  pointer-events: none;
+  letter-spacing: 0;
+  transform-origin: left center;
+}
+.print-element.crossing-text span {
+  display: block;
+}
