@@ -79,3 +79,11 @@ The build now follows the printer options found in the uploaded Chrysanth instal
 Important implementation detail: the extracted Philippine bank templates remain in their original FastReport landscape coordinate system. In Portrait mode the entire cheque report is rotated 90 degrees counter-clockwise onto a portrait page. This keeps Date, Payee, Amount, Wording, crossing lines/text and OR-BEARER X marks in one consistent transform.
 
 For EPSON L3250 testing: use Portrait, 100% / Actual Size, Margins None and Headers/Footers Off. Start with Default feed. If an actual cheque exits blank, select Follow Paper Feed and choose Center or Side to match how the cheque is physically placed in the rear feeder.
+
+
+CENTERED PORTRAIT PATCH
+- Portrait A4 print page remains the default.
+- Landscape bank report is rotated as one layer.
+- Default/Center feed places the ~90 mm cheque strip in the middle of the 210 mm portrait page (X = 60 mm).
+- Follow Paper Feed + Side positions the strip at the side.
+- OR-BEARER X marks remain inside the same transformed print layer.

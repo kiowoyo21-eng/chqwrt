@@ -1,6 +1,11 @@
 'use strict';
 
 const PX_PER_MM = 96 / 25.4;
+// Chrysanth's portrait/center-feed behavior places the narrow cheque stock
+// in the middle of the A4 portrait feed path. Philippine cheque stock is
+// approximately 90 mm tall, so after rotating the landscape report this
+// becomes a 90 mm-wide vertical print strip on the portrait page.
+const DEFAULT_CHEQUE_FEED_WIDTH_MM = 90;
 const SETTINGS_KEY = 'cw.settings.v1';
 const LAST_INPUT_KEY = 'cw.lastInput.v1';
 const ACCOUNTS_KEY = 'cw.accounts.v1';
@@ -348,6 +353,21 @@ function actualPage(template) {
   };
 }
 
+function chequeFeedStripWidthMm(page) {
+  // The extracted FastReport page is A4, but only a cheque-height strip of it
+  // is physically fed through the printer.  Chrysanth's Center feed positions
+  // that strip in the middle of the portrait A4 path.
+  return Math.min(DEFAULT_CHEQUE_FEED_WIDTH_MM, Number(page.width) || DEFAULT_CHEQUE_FEED_WIDTH_MM);
+}
+
+function chequeFeedLeftMm(page) {
+  if (page.rotation !== -90 && page.rotation !== 90) return 0;
+  const strip = chequeFeedStripWidthMm(page);
+  const path = settings.feed === 'follow-paper' ? settings.paperFeedPath : 'center';
+  if (path === 'side') return Math.max(0, page.width - strip);
+  return Math.max(0, (page.width - strip) / 2);
+}
+
 function applyPrintLayerGeometry(page) {
   const tw = page.templateWidth;
   const th = page.templateHeight;
@@ -359,16 +379,18 @@ function applyPrintLayerGeometry(page) {
   layer.style.height = `${th}mm`;
   layer.style.transformOrigin = '0 0';
 
-  // This reproduces Chrysanth's application-level Portrait mode: the bank
-  // report remains in its extracted landscape coordinate system and the whole
-  // report is rotated counter-clockwise onto an A4 portrait page. All items,
-  // including OR-BEARER X marks and crossing lines, stay in one transform.
+  // Chrysanth keeps the extracted report in landscape coordinates but prints
+  // it on a PORTRAIT A4 path. The cheque itself is a narrow stock centered (or
+  // side-fed) in that path, so the rotated report must be translated to the
+  // cheque feed strip instead of being pinned to the left page edge.
+  const feedLeft = chequeFeedLeftMm(page);
   if (page.rotation === -90) {
-    layer.style.left = '0mm';
+    layer.style.left = `${feedLeft}mm`;
     layer.style.top = `${tw}mm`;
     layer.style.transform = 'rotate(-90deg)';
   } else if (page.rotation === 90) {
-    layer.style.left = `${th}mm`;
+    // Mirror the feed-strip positioning for the opposite report orientation.
+    layer.style.left = `${feedLeft + th}mm`;
     layer.style.top = '0mm';
     layer.style.transform = 'rotate(90deg)';
   } else {
@@ -385,7 +407,10 @@ function setDynamicPageStyle(width, height) {
     style.id = 'dynamicPageStyle';
     document.head.appendChild(style);
   }
-  style.textContent = `@page { size: ${width}mm ${height}mm; margin: 0; }`;
+  const isA4 = Math.abs(Math.min(width,height) - 210) < 0.75 && Math.abs(Math.max(width,height) - 297) < 0.75;
+  const orientation = width <= height ? 'portrait' : 'landscape';
+  const pageSize = isA4 ? `A4 ${orientation}` : `${width}mm ${height}mm`;
+  style.textContent = `@page { size: ${pageSize}; margin: 0; }`;
 }
 
 function render() {
@@ -481,8 +506,9 @@ function render() {
   els.previewSize.textContent = `${page.width.toFixed(2)} × ${page.height.toFixed(2)} mm`;
   const finalX = templateOffset.x + globalOffset.x;
   const finalY = templateOffset.y + globalOffset.y;
-  const feedLabel = settings.feed === 'follow-paper' ? `Follow Paper Feed / ${settings.paperFeedPath === 'side' ? 'Side' : 'Center'}` : 'Default Feed';
-  els.offsetReadout.textContent = `${settings.orientation === 'landscape' ? 'Landscape' : 'Portrait'} • ${feedLabel} • Global ${globalOffset.x.toFixed(2)}, ${globalOffset.y.toFixed(2)} mm • Template + Account ${templateOffset.x.toFixed(2)}, ${templateOffset.y.toFixed(2)} mm`;
+  const feedLabel = settings.feed === 'follow-paper' ? `Follow Paper Feed / ${settings.paperFeedPath === 'side' ? 'Side' : 'Center'}` : 'Default Feed / Center';
+  const feedLeft = chequeFeedLeftMm(page);
+  els.offsetReadout.textContent = `${settings.orientation === 'landscape' ? 'Landscape' : 'Portrait'} • ${feedLabel} • Feed X ${feedLeft.toFixed(2)} mm • Global ${globalOffset.x.toFixed(2)}, ${globalOffset.y.toFixed(2)} mm • Template + Account ${templateOffset.x.toFixed(2)}, ${templateOffset.y.toFixed(2)} mm`;
   els.wordingPreview.textContent = amountWords || 'Enter an amount to generate cheque wording.';
   els.wordingLocale.textContent = `English • ${settings.andStyle === 'uk' ? 'UK' : 'US'} style`;
   scalePreview();
