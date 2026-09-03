@@ -10,11 +10,44 @@
 <body>
   <main class="app-shell">
     <header class="topbar no-print">
-      <div>
-        <div class="eyebrow">STATIC BUILD • BDO READY</div>
-        <h1>Cheque Writer</h1>
+      <div class="brand-stack">
+        <div>
+          <div class="eyebrow">STATIC BUILD • BDO READY</div>
+          <h1>Cheque Writer</h1>
+        </div>
+        <div class="menu-bar" aria-label="Application menus">
+          <div class="menu-wrap">
+            <button id="fileMenuBtn" class="menu-button" type="button" aria-expanded="false">File</button>
+            <div id="fileMenu" class="app-menu" hidden>
+              <button data-tool-action="accounts" type="button">Account</button>
+              <button data-tool-action="payees" type="button">Payee</button>
+              <div class="menu-sep"></div>
+              <button data-tool-action="history" type="button">Cheque Transaction History</button>
+              <button data-tool-action="reconciliation" type="button">Cash Flow / Bank Reconciliation</button>
+              <div class="menu-sep"></div>
+              <button data-tool-action="data-backup" type="button">Data File / Backup</button>
+            </div>
+          </div>
+          <div class="menu-wrap">
+            <button id="toolsMenuBtn" class="menu-button" type="button" aria-expanded="false">Tools</button>
+            <div id="toolsMenu" class="app-menu wide-menu" hidden>
+              <button data-tool-action="save-details" type="button">Save Cheque Details</button>
+              <button data-tool-action="reconciliation" type="button">Bank Reconciliation</button>
+              <button data-tool-action="cash-flow" type="button">Monitor Cash Flow</button>
+              <button data-tool-action="batch-print" type="button">Batch Printing</button>
+              <div class="menu-sep"></div>
+              <button data-tool-action="import-csv" type="button">Import Cheque Transactions</button>
+              <button data-tool-action="report" type="button">Cheque Transaction Report</button>
+              <button data-tool-action="account-printing" type="button">Account Based Printing &amp; Printer Adjustment</button>
+              <button data-tool-action="export-csv" type="button">Export to CSV</button>
+              <div class="menu-sep"></div>
+              <button data-tool-action="network-share" type="button">Share Data on Network <span class="menu-tag">backend required</span></button>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="top-actions">
+        <button id="saveRecordBtnTop" class="button ghost" type="button">Save Details</button>
         <button id="settingsBtn" class="button ghost" type="button">Settings</button>
         <button id="printBtnTop" class="button primary" type="button">Print Cheque</button>
       </div>
@@ -22,6 +55,14 @@
 
     <section class="workspace">
       <aside class="panel form-panel no-print">
+        <div class="field-group">
+          <label for="accountSelect">Account</label>
+          <select id="accountSelect">
+            <option value="">No saved account / use template directly</option>
+          </select>
+          <div class="inline-hint">Saved accounts can remember a bank template and their own X/Y printer fine-tune.</div>
+        </div>
+
         <div class="field-group">
           <label for="templateSelect">Bank / cheque template</label>
           <div class="select-wrap">
@@ -70,6 +111,7 @@
 
         <div class="actions-row">
           <button id="previewGuidesBtn" class="button ghost" type="button">Toggle Guides</button>
+          <button id="saveRecordBtn" class="button ghost" type="button">Save Details</button>
           <button id="printBtn" class="button primary" type="button">Print Cheque</button>
         </div>
 
@@ -226,6 +268,25 @@
       </footer>
     </section>
   </div>
+
+  <div id="toolModal" class="modal no-print" hidden>
+    <div class="modal-backdrop" data-close-tool-modal></div>
+    <section class="modal-card tool-modal-card" role="dialog" aria-modal="true" aria-labelledby="toolModalTitle">
+      <header class="modal-head">
+        <div>
+          <div class="eyebrow">LOCAL RECORDS &amp; TOOLS</div>
+          <h2 id="toolModalTitle">Tool</h2>
+        </div>
+        <button class="icon-button modal-close" type="button" data-close-tool-modal>×</button>
+      </header>
+      <div id="toolModalBody" class="tool-modal-body"></div>
+      <footer id="toolModalFoot" class="modal-foot"></footer>
+    </section>
+  </div>
+
+  <input id="csvImportInput" class="visually-hidden" type="file" accept=".csv,text/csv" />
+  <input id="backupImportInput" class="visually-hidden" type="file" accept=".json,application/json" />
+  <div id="batchPrintRoot" class="batch-print-root" aria-hidden="true"></div>
 
   <script src="app.js" defer></script>
 </body>

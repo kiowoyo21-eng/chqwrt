@@ -54,3 +54,16 @@ The A/C PAYEE ONLY / NOT NEGOTIABLE label is now rendered in a rotated local
 coordinate system centered geometrically between lnPayee1 and lnPayee2.
 This applies to ALL 83 extracted cheque layouts, not only BDO. The source
 Chrysanth library uses the same crossing-strip geometry for all 83 layouts.
+
+PATCH: Dynamic crossing spacing
+- Crossing font no longer shrinks for NOT NEGOTIABLE.
+- For two-line crossing text, lnPayee1/lnPayee2 expand apart symmetrically.
+- Applies to all extracted cheque templates.
+
+
+TOOLS ADDED
+- File menu: Account, Payee, Cheque Transaction History, Cash Flow / Bank Reconciliation, Data File / Backup.
+- Tools menu: Save Cheque Details, Bank Reconciliation, Monitor Cash Flow, Batch Printing, CSV Import, Transaction Report, Account-Based Printing & Printer Adjustment, CSV Export.
+- Share Data on Network is shown but intentionally disabled in the pure static build because true multi-device sharing requires a backend/LAN service.
+- Accounts, payees and cheque history are stored only in this browser via localStorage unless you explicitly export a CSV/JSON backup.
+- The latest dynamic crossing fix is included: two-line crossing keeps the original font size and expands the space between the diagonal lines instead of shrinking the wording.
