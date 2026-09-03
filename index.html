@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light" />
+  <title>Cheque Writer — BDO Ready</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar no-print">
+      <div>
+        <div class="eyebrow">STATIC BUILD • BDO READY</div>
+        <h1>Cheque Writer</h1>
+      </div>
+      <div class="top-actions">
+        <button id="settingsBtn" class="button ghost" type="button">Settings</button>
+        <button id="printBtnTop" class="button primary" type="button">Print Cheque</button>
+      </div>
+    </header>
+
+    <section class="workspace">
+      <aside class="panel form-panel no-print">
+        <div class="field-group">
+          <label for="templateSelect">Bank / cheque template</label>
+          <div class="select-wrap">
+            <select id="templateSelect"></select>
+          </div>
+          <div id="templateMeta" class="hint"></div>
+        </div>
+
+        <div class="row check-row">
+          <label class="check-label"><input id="dateEnabled" type="checkbox" checked /> <span>Date</span></label>
+          <input id="dateInput" type="date" />
+        </div>
+
+        <div class="field-group">
+          <label class="check-label"><input id="payeeEnabled" type="checkbox" checked /> <span>Payee</span></label>
+          <div class="input-with-action">
+            <input id="payeeInput" type="text" maxlength="120" value="JAN MICHELLE DAMIAN" autocomplete="off" />
+            <button id="clearPayeeBtn" class="icon-button" title="Clear payee" type="button">×</button>
+          </div>
+        </div>
+
+        <div class="two-col">
+          <div class="field-group">
+            <label class="check-label"><input id="amountEnabled" type="checkbox" checked /> <span>Amount</span></label>
+            <input id="amountInput" inputmode="decimal" value="20,000.00" autocomplete="off" />
+          </div>
+          <div class="field-group">
+            <label for="crossingSelect">Crossing</label>
+            <select id="crossingSelect">
+              <option value="ac-bearer">Cross A/C Payee + Or Bearer</option>
+              <option value="ac-notneg-bearer">Cross A/C Payee + Not Negotiable + Or Bearer</option>
+              <option value="ac-nobearer">Cross A/C Payee</option>
+              <option value="cross-only">Cross Only</option>
+              <option value="none">No Crossing</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field-group wording-box">
+          <div class="wording-head">
+            <span>Wording</span>
+            <span id="wordingLocale" class="badge">English • US style</span>
+          </div>
+          <div id="wordingPreview" class="wording-preview"></div>
+        </div>
+
+        <div class="actions-row">
+          <button id="previewGuidesBtn" class="button ghost" type="button">Toggle Guides</button>
+          <button id="printBtn" class="button primary" type="button">Print Cheque</button>
+        </div>
+
+        <div class="print-note">
+          For the first BDO comparison test, use the same printer as Chrysanth and set the browser print dialog to <strong>100% scale</strong>, <strong>Margins: None</strong>, and <strong>Headers/footers: Off</strong>. Cheque values are not sent to a server by this static build.
+        </div>
+      </aside>
+
+      <section class="panel preview-panel">
+        <div class="preview-toolbar no-print">
+          <div>
+            <strong>Print Preview</strong>
+            <span id="previewSize" class="hint"></span>
+          </div>
+          <div id="offsetReadout" class="offset-readout"></div>
+        </div>
+        <div id="previewViewport" class="preview-viewport">
+          <div id="sheet" class="sheet" aria-label="Cheque print page preview">
+            <div id="printLayer" class="print-layer"></div>
+            <div class="screen-only page-corner-label">TEMPLATE OUTPUT</div>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <div id="settingsModal" class="modal no-print" hidden>
+    <div class="modal-backdrop" data-close-settings></div>
+    <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+      <header class="modal-head">
+        <div>
+          <div class="eyebrow">CHEQUE SETTINGS</div>
+          <h2 id="settingsTitle">Options</h2>
+        </div>
+        <button class="icon-button modal-close" type="button" data-close-settings>×</button>
+      </header>
+
+      <nav class="tabs" aria-label="Settings sections">
+        <button class="tab active" data-tab="printer" type="button">Printer</button>
+        <button class="tab" data-tab="alignment" type="button">Alignment</button>
+        <button class="tab" data-tab="font" type="button">Font</button>
+        <button class="tab" data-tab="style" type="button">Style</button>
+        <button class="tab" data-tab="locale" type="button">Locale</button>
+        <button class="tab" data-tab="general" type="button">General</button>
+      </nav>
+
+      <div class="tab-body">
+        <section class="tab-pane active" data-pane="printer">
+          <div class="settings-grid">
+            <label>Cheque orientation
+              <select id="orientationSetting">
+                <option value="template">Use template orientation</option>
+                <option value="portrait">Portrait</option>
+                <option value="landscape">Landscape</option>
+              </select>
+            </label>
+            <label>Cheque feed
+              <select id="feedSetting">
+                <option value="default">Default / browser print dialog</option>
+                <option value="manual">Manual / rear feed (select in printer dialog)</option>
+              </select>
+            </label>
+          </div>
+          <div class="info-box">A browser cannot reliably force a Windows printer tray/feed path. The template dimensions and alignment are controlled here; physical feed source is selected in the printer dialog.</div>
+        </section>
+
+        <section class="tab-pane" data-pane="alignment">
+          <h3>Global shift</h3>
+          <div class="settings-grid alignment-grid">
+            <label>Horizontal direction
+              <select id="xDirection"><option value="right">Shift Right</option><option value="left">Shift Left</option></select>
+            </label>
+            <label>Pixels
+              <input id="xPixels" type="number" min="0" max="500" step="1" value="0" />
+              <small>1 mm ≈ 3.78 px</small>
+            </label>
+            <label>Vertical direction
+              <select id="yDirection"><option value="down">Shift Down</option><option value="up">Shift Up</option></select>
+            </label>
+            <label>Pixels
+              <input id="yPixels" type="number" min="0" max="500" step="1" value="0" />
+              <small>1 mm ≈ 3.78 px</small>
+            </label>
+          </div>
+          <label class="switch-row"><input id="shiftAcPayee" type="checkbox" /> <span>Shift A/C Payee crossing position with global shift</span></label>
+
+          <h3>Current template fine-tune</h3>
+          <div class="settings-grid">
+            <label>X offset (mm)<input id="templateOffsetX" type="number" step="0.1" min="-30" max="30" value="0" /></label>
+            <label>Y offset (mm)<input id="templateOffsetY" type="number" step="0.1" min="-30" max="30" value="0" /></label>
+          </div>
+          <div class="info-box">Global adjustment affects all templates. Template fine-tune is saved only for the currently selected cheque layout.</div>
+        </section>
+
+        <section class="tab-pane" data-pane="font">
+          <label>Font
+            <select id="fontSetting">
+              <option value="template">Use template font (recommended)</option>
+              <option value="Arial">Arial</option>
+              <option value="Calibri">Calibri</option>
+              <option value="Times New Roman">Times New Roman</option>
+              <option value="Courier New">Courier New</option>
+            </select>
+          </label>
+          <div class="info-box">The extracted Philippine templates predominantly use Arial. Keep “Use template font” for the closest Chrysanth match.</div>
+        </section>
+
+        <section class="tab-pane" data-pane="style">
+          <h3>Payee</h3>
+          <div class="settings-grid">
+            <label>Prefix<input id="payeePrefix" type="text" maxlength="30" /></label>
+            <label>Suffix<input id="payeeSuffix" type="text" maxlength="30" /></label>
+          </div>
+          <label>Long payee
+            <select id="longPayee">
+              <option value="wrap">Wrap Payee in 2 Lines</option>
+              <option value="shrink">Shrink to Fit</option>
+              <option value="clip">Clip at Field Width</option>
+            </select>
+          </label>
+          <h3>Amount wording</h3>
+          <div class="settings-grid">
+            <label>Prefix<input id="amountPrefix" type="text" maxlength="30" /></label>
+            <label>Suffix<input id="amountSuffix" type="text" maxlength="30" /></label>
+          </div>
+          <label class="switch-row"><input id="uppercaseWording" type="checkbox" /> <span>Print in Capital Letters</span></label>
+        </section>
+
+        <section class="tab-pane" data-pane="locale">
+          <label>“And” style
+            <select id="andStyle"><option value="us">US Style — One Hundred Twenty</option><option value="uk">UK Style — One Hundred and Twenty</option></select>
+          </label>
+          <label>Date format
+            <select id="dateFormat">
+              <option value="mdy">MM/DD/YYYY</option>
+              <option value="dmy">DD/MM/YYYY</option>
+              <option value="text">September 05, 2012</option>
+            </select>
+          </label>
+          <div class="info-box">For bank cheque stocks with pre-printed date boxes, use the format required by the cheque design. The default is MM/DD/YYYY.</div>
+        </section>
+
+        <section class="tab-pane" data-pane="general">
+          <label class="switch-row"><input id="showGuidesSetting" type="checkbox" checked /> <span>Show template field guides in preview</span></label>
+          <label class="switch-row"><input id="rememberInputsSetting" type="checkbox" /> <span>Remember last payee and amount on this PC</span></label>
+          <div class="info-box">By default, cheque inputs are not saved. Only app settings and printer calibration are stored locally in this browser.</div>
+          <button id="resetSettingsBtn" class="button danger" type="button">Reset Local Settings</button>
+        </section>
+      </div>
+
+      <footer class="modal-foot">
+        <button class="button ghost" type="button" data-close-settings>Cancel</button>
+        <button id="saveSettingsBtn" class="button primary" type="button">Save Settings</button>
+      </footer>
+    </section>
+  </div>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
