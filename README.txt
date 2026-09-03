@@ -67,3 +67,15 @@ TOOLS ADDED
 - Share Data on Network is shown but intentionally disabled in the pure static build because true multi-device sharing requires a backend/LAN service.
 - Accounts, payees and cheque history are stored only in this browser via localStorage unless you explicitly export a CSV/JSON backup.
 - The latest dynamic crossing fix is included: two-line crossing keeps the original font size and expands the space between the diagonal lines instead of shrinking the wording.
+
+
+CHRY SANTH PRINTER MODE PATCH
+----------------------------
+The build now follows the printer options found in the uploaded Chrysanth installation:
+- Cheque Orientation: Portrait / Landscape (Portrait default)
+- Cheque Feed: Default / Follow Paper Feed
+- Paper Feed Path: Center / Side
+
+Important implementation detail: the extracted Philippine bank templates remain in their original FastReport landscape coordinate system. In Portrait mode the entire cheque report is rotated 90 degrees counter-clockwise onto a portrait page. This keeps Date, Payee, Amount, Wording, crossing lines/text and OR-BEARER X marks in one consistent transform.
+
+For EPSON L3250 testing: use Portrait, 100% / Actual Size, Margins None and Headers/Footers Off. Start with Default feed. If an actual cheque exits blank, select Follow Paper Feed and choose Center or Side to match how the cheque is physically placed in the rear feeder.

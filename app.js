@@ -19,8 +19,9 @@ let showGuidesTransient = null;
 let resizeTimer = null;
 
 const defaultSettings = () => ({
-  orientation: 'template',
+  orientation: 'portrait',
   feed: 'default',
+  paperFeedPath: 'center',
   xDirection: 'right',
   xPixels: 0,
   yDirection: 'down',
@@ -46,11 +47,17 @@ function safeLoadSettings() {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (!raw) return defaultSettings();
     const parsed = JSON.parse(raw);
-    return {
+    const merged = {
       ...defaultSettings(),
       ...parsed,
       templateOffsets: parsed && parsed.templateOffsets && typeof parsed.templateOffsets === 'object' ? parsed.templateOffsets : {}
     };
+    // Migration from early test builds: Chrysanth's application-level default
+    // is Portrait even though the embedded FastReport cheque canvas is landscape.
+    if (merged.orientation === 'template') merged.orientation = 'portrait';
+    if (merged.feed === 'manual') merged.feed = 'default';
+    if (!['center','side'].includes(merged.paperFeedPath)) merged.paperFeedPath = 'center';
+    return merged;
   } catch (_) {
     return defaultSettings();
   }
@@ -88,7 +95,7 @@ function cacheElements() {
     'templateSelect','templateMeta','dateEnabled','dateInput','payeeEnabled','payeeInput','clearPayeeBtn',
     'amountEnabled','amountInput','crossingSelect','wordingLocale','wordingPreview','previewGuidesBtn','printBtn',
     'printBtnTop','settingsBtn','previewViewport','sheet','printLayer','previewSize','offsetReadout','settingsModal',
-    'orientationSetting','feedSetting','xDirection','xPixels','yDirection','yPixels','shiftAcPayee',
+    'orientationSetting','feedSetting','paperFeedPathSetting','feedPathGroup','printerFeedGuide','xDirection','xPixels','yDirection','yPixels','shiftAcPayee',
     'templateOffsetX','templateOffsetY','fontSetting','payeePrefix','payeeSuffix','longPayee','amountPrefix',
     'amountSuffix','uppercaseWording','andStyle','dateFormat','showGuidesSetting','rememberInputsSetting',
     'resetSettingsBtn','saveSettingsBtn'
@@ -177,6 +184,8 @@ function bindEvents() {
 
   [els.printBtn, els.printBtnTop].forEach(btn => btn.addEventListener('click', printCheque));
   els.settingsBtn.addEventListener('click', openSettings);
+  els.feedSetting.addEventListener('change', updatePrinterSettingsUi);
+  els.paperFeedPathSetting.addEventListener('change', updatePrinterSettingsUi);
   document.querySelectorAll('[data-close-settings]').forEach(el => el.addEventListener('click', closeSettings));
   document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => activateTab(tab.dataset.tab)));
   els.saveSettingsBtn.addEventListener('click', commitSettings);
@@ -187,6 +196,22 @@ function bindEvents() {
     resizeTimer = setTimeout(scalePreview, 80);
   });
   window.addEventListener('afterprint', scalePreview);
+}
+
+function updatePrinterSettingsUi() {
+  if (!els.feedSetting || !els.paperFeedPathSetting) return;
+  const follow = els.feedSetting.value === 'follow-paper';
+  els.paperFeedPathSetting.disabled = !follow;
+  if (els.feedPathGroup) els.feedPathGroup.classList.toggle('is-disabled', !follow);
+  if (els.printerFeedGuide) {
+    const path = els.paperFeedPathSetting.value === 'side' ? 'side' : 'center';
+    els.printerFeedGuide.dataset.path = path;
+    els.printerFeedGuide.dataset.feed = follow ? 'follow' : 'default';
+    const text = els.printerFeedGuide.querySelector('.feed-guide-text');
+    if (text) text.textContent = follow
+      ? `Follow Paper Feed • ${path === 'side' ? 'Side' : 'Center'} path`
+      : 'Default cheque feed';
+  }
 }
 
 function activateTab(name) {
@@ -207,6 +232,8 @@ function closeSettings() {
 function loadSettingsForm() {
   els.orientationSetting.value = settings.orientation;
   els.feedSetting.value = settings.feed;
+  els.paperFeedPathSetting.value = settings.paperFeedPath || 'center';
+  updatePrinterSettingsUi();
   els.xDirection.value = settings.xDirection;
   els.xPixels.value = settings.xPixels;
   els.yDirection.value = settings.yDirection;
@@ -240,6 +267,7 @@ function commitSettings() {
     ...settings,
     orientation: els.orientationSetting.value,
     feed: els.feedSetting.value,
+    paperFeedPath: els.paperFeedPathSetting.value,
     xDirection: els.xDirection.value,
     xPixels: clampNumber(els.xPixels.value, 0, 500, 0),
     yDirection: els.yDirection.value,
@@ -297,11 +325,57 @@ function templateOffsetsMm() {
 }
 
 function actualPage(template) {
-  let width = Number(template.page.widthMm);
-  let height = Number(template.page.heightMm);
-  if (settings.orientation === 'portrait' && width > height) [width,height] = [height,width];
-  if (settings.orientation === 'landscape' && height > width) [width,height] = [height,width];
-  return {width,height};
+  const tw = Number(template.page.widthMm);
+  const th = Number(template.page.heightMm);
+  const templateLandscape = tw >= th;
+  const targetPortrait = settings.orientation !== 'landscape';
+
+  if (targetPortrait) {
+    return {
+      width: Math.min(tw, th),
+      height: Math.max(tw, th),
+      rotation: templateLandscape ? -90 : 0,
+      templateWidth: tw,
+      templateHeight: th
+    };
+  }
+  return {
+    width: Math.max(tw, th),
+    height: Math.min(tw, th),
+    rotation: templateLandscape ? 0 : 90,
+    templateWidth: tw,
+    templateHeight: th
+  };
+}
+
+function applyPrintLayerGeometry(page) {
+  const tw = page.templateWidth;
+  const th = page.templateHeight;
+  const layer = els.printLayer;
+  layer.style.inset = 'auto';
+  layer.style.right = 'auto';
+  layer.style.bottom = 'auto';
+  layer.style.width = `${tw}mm`;
+  layer.style.height = `${th}mm`;
+  layer.style.transformOrigin = '0 0';
+
+  // This reproduces Chrysanth's application-level Portrait mode: the bank
+  // report remains in its extracted landscape coordinate system and the whole
+  // report is rotated counter-clockwise onto an A4 portrait page. All items,
+  // including OR-BEARER X marks and crossing lines, stay in one transform.
+  if (page.rotation === -90) {
+    layer.style.left = '0mm';
+    layer.style.top = `${tw}mm`;
+    layer.style.transform = 'rotate(-90deg)';
+  } else if (page.rotation === 90) {
+    layer.style.left = `${th}mm`;
+    layer.style.top = '0mm';
+    layer.style.transform = 'rotate(90deg)';
+  } else {
+    layer.style.left = '0mm';
+    layer.style.top = '0mm';
+    layer.style.transform = 'none';
+  }
 }
 
 function setDynamicPageStyle(width, height) {
@@ -323,6 +397,7 @@ function render() {
   els.sheet.style.width = `${page.width}mm`;
   els.sheet.style.height = `${page.height}mm`;
   els.printLayer.textContent = '';
+  applyPrintLayerGeometry(page);
   setDynamicPageStyle(page.width, page.height);
 
   const globalOffset = signedGlobalOffsetsMm();
@@ -406,7 +481,8 @@ function render() {
   els.previewSize.textContent = `${page.width.toFixed(2)} × ${page.height.toFixed(2)} mm`;
   const finalX = templateOffset.x + globalOffset.x;
   const finalY = templateOffset.y + globalOffset.y;
-  els.offsetReadout.textContent = `Global ${globalOffset.x.toFixed(2)}, ${globalOffset.y.toFixed(2)} mm • Template + Account ${templateOffset.x.toFixed(2)}, ${templateOffset.y.toFixed(2)} mm • Final ${finalX.toFixed(2)}, ${finalY.toFixed(2)} mm`;
+  const feedLabel = settings.feed === 'follow-paper' ? `Follow Paper Feed / ${settings.paperFeedPath === 'side' ? 'Side' : 'Center'}` : 'Default Feed';
+  els.offsetReadout.textContent = `${settings.orientation === 'landscape' ? 'Landscape' : 'Portrait'} • ${feedLabel} • Global ${globalOffset.x.toFixed(2)}, ${globalOffset.y.toFixed(2)} mm • Template + Account ${templateOffset.x.toFixed(2)}, ${templateOffset.y.toFixed(2)} mm`;
   els.wordingPreview.textContent = amountWords || 'Enter an amount to generate cheque wording.';
   els.wordingLocale.textContent = `English • ${settings.andStyle === 'uk' ? 'UK' : 'US'} style`;
   scalePreview();

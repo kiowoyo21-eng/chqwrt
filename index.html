@@ -116,7 +116,7 @@
         </div>
 
         <div class="print-note">
-          For the first BDO comparison test, use the same printer as Chrysanth and set the browser print dialog to <strong>100% scale</strong>, <strong>Margins: None</strong>, and <strong>Headers/footers: Off</strong>. Cheque values are not sent to a server by this static build.
+          For BDO printing, keep <strong>Cheque Orientation: Portrait</strong> (Chrysanth default), use the same printer/feed position, and set the browser print dialog to <strong>100% scale</strong>, <strong>Margins: None</strong>, and <strong>Headers/footers: Off</strong>. Cheque values are not sent to a server by this static build.
         </div>
       </aside>
 
@@ -161,21 +161,31 @@
       <div class="tab-body">
         <section class="tab-pane active" data-pane="printer">
           <div class="settings-grid">
-            <label>Cheque orientation
+            <label>Cheque Orientation
               <select id="orientationSetting">
-                <option value="template">Use template orientation</option>
                 <option value="portrait">Portrait</option>
                 <option value="landscape">Landscape</option>
               </select>
             </label>
-            <label>Cheque feed
+            <label>Cheque Feed
               <select id="feedSetting">
-                <option value="default">Default / browser print dialog</option>
-                <option value="manual">Manual / rear feed (select in printer dialog)</option>
+                <option value="default">Default</option>
+                <option value="follow-paper">Follow Paper Feed</option>
+              </select>
+            </label>
+            <label id="feedPathGroup">Paper Feed Path
+              <select id="paperFeedPathSetting">
+                <option value="center">Center</option>
+                <option value="side">Side</option>
               </select>
             </label>
           </div>
-          <div class="info-box">A browser cannot reliably force a Windows printer tray/feed path. The template dimensions and alignment are controlled here; physical feed source is selected in the printer dialog.</div>
+          <div id="printerFeedGuide" class="printer-feed-guide" data-path="center" data-feed="default">
+            <div class="feed-printer">PRINTER ↑</div>
+            <div class="feed-paper"><span></span></div>
+            <div class="feed-guide-text">Default cheque feed</div>
+          </div>
+          <div class="info-box"><strong>Chrysanth behavior:</strong> Portrait is the default application orientation even when the embedded bank report is landscape. If an actual cheque comes out blank, use <strong>Follow Paper Feed</strong> and choose the same <strong>Center</strong> or <strong>Side</strong> loading path used on the printer. The browser still leaves the mechanical tray selection to the Epson driver.</div>
         </section>
 
         <section class="tab-pane" data-pane="alignment">

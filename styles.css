@@ -57,7 +57,7 @@ input:focus, select:focus { border-color: #6ea4e5; box-shadow: 0 0 0 3px rgba(20
 .print-note { margin-top: 14px; border-radius: 10px; background: #fff7df; border: 1px solid #ecd99d; padding: 10px 12px; color: #65531e; font-size: 11px; line-height: 1.45; }
 .preview-viewport { background: #dfe4eb; padding: 28px; overflow: hidden; position: relative; min-height: 650px; }
 .sheet { position: relative; background: #fff; transform-origin: top left; box-shadow: 0 12px 28px rgba(0,0,0,.18); overflow: hidden; }
-.print-layer { position: absolute; inset: 0; }
+.print-layer { position: absolute; inset: 0; transform-origin: 0 0; }
 .print-element { position: absolute; white-space: pre; color: #000; line-height: 1.05; transform-origin: left top; }
 .print-element.wrap { white-space: normal; overflow: hidden; }
 .print-element.clip { overflow: hidden; }
@@ -99,6 +99,19 @@ input:focus, select:focus { border-color: #6ea4e5; box-shadow: 0 0 0 3px rgba(20
   .modal { padding: 8px; }
   .modal-card { width: 100%; max-height: 96vh; }
 }
+
+
+/* Chrysanth-style printer feed controls. The drawing is a schematic only; it
+   mirrors the Center/Side choices embedded in the original Options dialog. */
+#feedPathGroup.is-disabled { opacity: .48; }
+.printer-feed-guide { margin-top: 12px; display:grid; justify-items:center; gap:5px; padding:12px; border:1px solid var(--border); border-radius:12px; background:#fafbfd; }
+.feed-printer { font-size:11px; font-weight:800; letter-spacing:.04em; color:#445065; }
+.feed-paper { position:relative; width:112px; height:70px; border:2px solid #7d8795; border-radius:3px; background:#fff; }
+.feed-paper span { position:absolute; top:-2px; width:42px; height:48px; background:#50c66a; border:2px solid #26313f; }
+.printer-feed-guide[data-path="center"] .feed-paper span { left:50%; transform:translateX(-50%); }
+.printer-feed-guide[data-path="side"] .feed-paper span { right:-2px; }
+.printer-feed-guide[data-feed="default"] .feed-paper span { left:50%; right:auto; transform:translateX(-50%); opacity:.55; }
+.feed-guide-text { font-size:10px; color:var(--muted); font-weight:700; }
 
 @media print {
   html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; }
